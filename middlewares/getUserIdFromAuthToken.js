@@ -1,0 +1,30 @@
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const fetchUserFromAuthToken = async (req, res, next) => {
+  try {
+    const AuthToken = req.headers.authtoken;
+    if (!AuthToken) {
+      return res.json({
+        success: false,
+        error: {
+          code: "auth/tkn-abs",
+          message: "AuthToken not present in headers",
+        },
+      });
+    }
+    const payload = jwt.verify(AuthToken, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (error) {
+    return res.json({
+      success: false,
+      error: {
+        code: "auth/tkn-inc",
+        message: "Authorisation failed - Access denied",
+      },
+    });
+  }
+};
+
+module.exports = { fetchUserFromAuthToken };
