@@ -1,10 +1,37 @@
 const User = require("../models/UserModel");
-const jwt = require("jsonwebtoken");
+const Vendor = require("../models/VendorModel");
 const { verifyPhone } = require("../helpers/verifyPhone");
 
-const validateSignup = async (req, res, next) => {
-  const { name, username, phone, email, password, phoneToken } = req.body;
-  if (!name || !username || !email || !password) {
+function validateEmail(emailInput) {
+  const re =
+    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(String(emailInput).toLowerCase());
+}
+function validatePhone(phoneInput) {
+  const re = /^(\+91[\-\s]?)?[0]?(91)?[789]\d{9}$/;
+  return re.test(String(phoneInput));
+}
+
+const validateUserSignup = async (req, res, next) => {
+  const {
+    name,
+    username,
+    phone,
+    email,
+    password,
+    phoneToken,
+    userType,
+    thumbnail,
+    gstNumber,
+    category,
+  } = req.body;
+  if (
+    !name ||
+    (userType == "user" && !username) ||
+    !email ||
+    !password ||
+    (userType === "vendor" && (!thumbnail || !gstNumber || !category))
+  ) {
     return res.status(400).json({
       success: false,
       error: {
@@ -28,22 +55,22 @@ const validateSignup = async (req, res, next) => {
 
   // validation checks
   const usernameExists = await User.findOne({ username: username });
-  const emailExists = await User.findOne({ email: email });
-  const phoneExists = await User.findOne({ phone: phone });
+
+  let emailExists;
+  let phoneExists;
+
+  if (userType == "user") {
+    emailExists = await User.findOne({ email: email });
+    phoneExists = await User.findOne({ phone: phone });
+  } else if (userType == "vendor") {
+    emailExists = await Vendor.findOne({ email: email });
+    phoneExists = await Vendor.findOne({ phone: phone });
+  }
+
   const emailIsValid = validateEmail(email);
   const passwordIsValid = password.length > 6 ? true : false;
   const phoneIsValid = phone ? validatePhone(phone) : true;
   const phoneIsVerified = phone ? verifyPhone(phone, phoneToken) : true;
-
-  function validateEmail(emailInput) {
-    const re =
-      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(String(emailInput).toLowerCase());
-  }
-  function validatePhone(phoneInput) {
-    const re = /^(\+91[\-\s]?)?[0]?(91)?[789]\d{9}$/;
-    return re.test(String(phoneInput));
-  }
 
   if (usernameExists) {
     return res.status(400).json({
@@ -117,4 +144,5 @@ const validateSignup = async (req, res, next) => {
   }
   next();
 };
-module.exports = { validateSignup };
+
+module.exports = { validateUserSignup };

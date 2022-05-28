@@ -5,30 +5,45 @@ const jwt = require("jsonwebtoken");
 const { verifyPhone } = require("../helpers/verifyPhone");
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const generateAuthToken = (userId) => {
+  const authPayload = { _id: userId };
+  const authToken = jwt.sign(authPayload, JWT_SECRET);
+  return authToken;
+};
+
 const doUserSignup = async (req, res) => {
-  const { name, username, phone, email, password } = req.body;
+  try {
+    const { name, username, phone, email, password } = req.body;
 
-  const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-  const user = await User.create({
-    name: name,
-    username: username,
-    phone: phone,
-    email: email,
-    password: passwordHash,
-  });
+    const user = await User.create({
+      name: name,
+      username: username,
+      phone: phone,
+      email: email,
+      password: passwordHash,
+    });
 
-  const authTokenPayload = { _id: user._id };
+    const authToken = generateAuthToken(user._id);
 
-  const authToken = jwt.sign(authTokenPayload, JWT_SECRET);
+    const resUser = await User.findById(user._id).select("-password");
 
-  const resUser = await User.findById(user._id).select("-password");
-
-  return res.json({
-    success: true,
-    user: resUser,
-    authToken,
-  });
+    return res.json({
+      success: true,
+      user: resUser,
+      authToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        field: "server",
+        message: "Internal server error.",
+        statusCode: 500,
+      },
+    });
+  }
 };
 
 const checkDataExists = async (req, res) => {
@@ -59,6 +74,7 @@ function isEmail(emailInput) {
     /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(emailInput).toLowerCase());
 }
+
 const doUserLogin = async (req, res) => {
   try {
     const { field, password } = req.body;
@@ -101,8 +117,7 @@ const doUserLogin = async (req, res) => {
       });
     }
 
-    const authTokenPayload = { _id: userExists._id };
-    const authToken = jwt.sign(authTokenPayload, JWT_SECRET);
+    const authToken = generateAuthToken(userExists._id);
 
     const resUser = await User.findById(userExists._id).select("-password");
 
@@ -159,7 +174,6 @@ const changeUserPassword = async (req, res) => {
 
 // input phone
 const resetUserPassword = async (req, res) => {
-  console.log(req.body);
   const phoneToken = req.headers.phonetoken;
   const { phone, newPassword } = req.body;
   if (!phoneToken) {
@@ -196,10 +210,113 @@ const resetUserPassword = async (req, res) => {
   });
 };
 
+const doVendorSignup = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      address,
+      thumbnail,
+      gstNumber,
+      productTags,
+      category,
+      phone,
+    } = req.body;
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const vendor = await Vendor.create({
+      name: name,
+      email: email,
+      password: passwordHash,
+      address: address,
+      thumbnail: thumbnail,
+      gstNumber: gstNumber,
+      productTags: productTags ? productTags : [],
+      category: category,
+      phone: phone,
+    });
+
+    const authToken = generateAuthToken(vendor._id);
+
+    const resVendor = await Vendor.findById(vendor._id).select("-password");
+
+    return res.json({
+      success: true,
+      vendor: resVendor,
+      authToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        field: "server",
+        message: "Internal server error.",
+        statusCode: 500,
+      },
+    });
+  }
+};
+
+const doVendorLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const vendorExists = await Vendor.findOne({ email: email });
+    if (!vendorExists) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          statusCode: 404,
+          field: "email",
+          message: "Email does not exist",
+        },
+      });
+    }
+    const passwordMatches = await bcrypt.compare(
+      password,
+      vendorExists.password
+    );
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          statusCode: 400,
+          field: "password",
+          message: "Password is incorrect",
+        },
+      });
+    }
+
+    const authToken = generateAuthToken(vendorExists._id);
+
+    const resVendor = await Vendor.findById(vendorExists._id).select(
+      "-password"
+    );
+
+    return res.json({
+      success: true,
+      vendor: resVendor,
+      authToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        field: "server",
+        message: "Internal server error.",
+        statusCode: 500,
+      },
+    });
+  }
+};
+
 module.exports = {
   doUserSignup,
   doUserLogin,
   changeUserPassword,
   resetUserPassword,
   checkDataExists,
+  doVendorSignup,
+  doVendorLogin,
 };

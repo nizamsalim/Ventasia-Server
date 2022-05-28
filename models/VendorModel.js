@@ -9,6 +9,7 @@ const VendorSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      unique: true,
     },
     password: {
       type: String,
@@ -24,6 +25,7 @@ const VendorSchema = new mongoose.Schema(
         countryName: String,
         pinCode: String,
       },
+      required: true,
     },
     comments: {
       type: [
@@ -32,6 +34,7 @@ const VendorSchema = new mongoose.Schema(
           comment: { type: String, required: true },
         },
       ],
+      default: [],
     },
     likes: {
       type: Number,
@@ -47,6 +50,7 @@ const VendorSchema = new mongoose.Schema(
         filename: { type: String, required: true },
         url: { type: String, required: true },
       },
+      required: true,
     },
     orderStatistics: {
       type: {
@@ -55,7 +59,20 @@ const VendorSchema = new mongoose.Schema(
         cancelled: { type: Number, default: 0 },
       },
     },
+    gstNumber: {
+      type: String,
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
+    },
+    productTags: {
+      type: Array,
+      default: [],
+    },
   },
+
   { timestamps: true }
 );
 
